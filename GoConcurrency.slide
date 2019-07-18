@@ -1,0 +1,164 @@
+Introduction to Go
+Welcome to Gophers world
+
+
+Deepak Gunjetti
+Software Architect @ Andcloud
+deepak@andcloud.io
+@dgunjetti
+
+* Goroutines
+
+- Goroutines is the basic unit of organisation in a Go program.
+
+- Every program has at least one goroutine: the main goroutine, which is automatically created and started when process begins.
+
+* Goroutines...
+
+- Goroutines is a function that is running concurrently (not necessarily in parallel!).
+
+- 'go' keyword placed befor a function call starts a goroutine.
+
+.code -edit src/01-Intro/hello01/main.go  /START OMIT/,/END OMIT/
+
+* Goroutines...
+
+- Anonymous function
+
+.code -edit src/01-Intro/hello02/main.go  /START OMIT/,/END OMIT/
+
+- we can assign function to variable and call the anonymous function
+
+.code -edit src/01-Intro/hello03/main.go  /START OMIT/,/END OMIT/
+
+* Goroutines...
+
+- Goroutines are not OS threads, they are higher level abstration.
+
+- Go has machanism known as M:N scheduler.
+
+- M green threads are mapped onto N OS threads.
+
+- scheduler distributes goroutines across the green threads.
+
+- when goroutines get blocked, other goroutines are run.
+
+* fork/join model
+
+- 'go' statement forks a thread of execution.
+
+- main goroutine and sayHello goroutine can be synchronized at a join point.
+
+* fork/join model
+
+.play -edit src/01-Intro/join/main.go  /START OMIT/,/END OMIT/
+
+- deterministically block main goroutine until the goroutine hosting sayHello function terminates.
+
+* Closures
+
+- Goroutines execute within the same address space they are created in.
+
+- They can directly modify variables in the enclosing lexical block.
+
+* Closures..
+
+.play -edit src/01-Intro/closure/main.go  /START OMIT/,/END OMIT/
+
+* Closures..
+
+- The Go runtime is observant enough to know that a reference to the "i" variable is still being held, and therefore will transfer the memory to the heap so that the goroutines can continue to access it.
+
+- Go’s compiler nicely takes care of pinning variables in memory so that goroutines don’t accidentally access freed memory, which allows developers to focus on their problem space instead of memory management;
+
+* Closures..
+
+.play -edit src/01-Intro/closure02/main.go  /START OMIT/,/END OMIT/
+
+* Closures..
+
+- proper way to write this loop is to pass a copy of salutation into the closure so that by the time the goroutine is run, it will be operating on the data from its iteration of the loop.
+
+* Lightweight
+
+- A newly minted goroutine is given a few kilobytes
+
+- run-time grows (and shrinks) the memory for storing the stack automatically, allowing many goroutines to live in a modest amount of memory. 
+
+- CPU overhead averages about three cheap instructions per function call. It is practical to create hundreds of thousands of goroutines in the same address space.
+
+- If goroutines were just threads, system resources would run out at a much smaller number.
+
+- Context switching in software is comparatively much, much cheaper. Under a software-defined scheduler, the runtime can be more selective in what is persisted for retrieval, how it is persisted, and when the persisting need occur.
+
+* Synchronization
+
+- Since multiple goroutines can operate against the same address space, we still have to worry about synchronization.
+
+- we can choose either to
+
+    - synchronize access to the shared memory the goroutines access
+
+    -  use CSP primitives to share memory by communication
+
+* sync package
+
+- The sync package contains the concurrency primitives for memory access synchronization.
+
+* WaitGroup
+
+- Wait for set of concurrent operations to complete.
+
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+    }()
+    wg.Wait()
+
+- wg.Add(1) - WaitGroup like a concurrent-safe counter: calls to Add increment the counter by the integer passed in. Add are done outside the goroutines they’re helping to track to avoid race condition.
+
+- wg.Done() - decrement the counter by one.
+
+- wg.Wait() - block until the counter is zero.
+
+* Mutex and RWMutex
+
+- Mutex guard critical sections of your program.
+
+- critical section is an area of your program that requires exclusive access to a shared resource. 
+
+- convention developers must follow to synchronize access to the memory to coordinating access to this memory by guarding access to it with a mutex.
+
+* Mutex and RWMutex
+
+.code -edit src/01-Intro/mutex/main.go  /START OMIT1/,/END OMIT1/
+
+- It is a very common idiom to Unlock with defer statement, to ensure call always happens, even when panicing.
+
+* Mutex and RWMutex..
+
+.code -edit src/01-Intro/mutex/main.go  /START OMIT2/,/END OMIT2/
+
+* sync.RWMutex
+
+- Multiple number of readers can hold a reader lock so long as nothing else is holding a writer lock.
+
+- Ex: producer that is less active than the numerous consumers
+
+* sync.RWMutex..
+
+.code -edit src/01-Intro/rwmutex/main.go  /START OMIT1/,/END OMIT1/
+
+* sync.RWMutex..
+
+.code -edit src/01-Intro/rwmutex/main.go  /START OMIT2/,/END OMIT2/
+
+- sync.Locker interface two methods Lock and Unlock, which Mutex and RWMutex types satisfy.
+
+* Cond
+
+- A rendezvous point for goroutines waiting for or announcing the occurrence
+of an event.
+
+- It is a way for a goroutine to efficiently sleep until it was signaled to wake and check its condition.
+
