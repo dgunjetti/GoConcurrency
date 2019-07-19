@@ -162,3 +162,85 @@ of an event.
 
 - It is a way for a goroutine to efficiently sleep until it was signaled to wake and check its condition.
 
+- Ex: Say we have a queue of fixed length 2, and 10 items we want to push onto the queue. We want to enqueue items as soon as there is room, so we want to be notified as soon as there’s room in the queue. 
+
+
+* Cond..
+
+.code -edit src/01-Intro/cond/main.go  /START OMIT1/,/END OMIT1/
+
+- The NewCond function takes in a type that satisfies the sync.Locker interface. This is what allows the Cond type to facilitate coordination with other goroutines in a concurrent-safe way.
+
+* Cond..
+
+.code -edit src/01-Intro/cond/main.go  /START OMIT2/,/END OMIT2/
+
+- we lock the Locker for a condition. call to Wait automatically calls Unlock on the Locker when entered.
+
+- We call Wait, which will suspend the main goroutine until a signal on the condition has been sent.
+
+* Cond..
+
+- Signal  notifying goroutines blocked on a Wait call that the condition has been triggered.
+
+- Broadcast is other method in cond.
+
+- Internally, the runtime maintains a FIFO list of goroutines waiting to be signaled; Signal finds the goroutine that’s been waiting the longest and notifies that, whereas Broadcast sends a signal to all goroutines that are waiting.
+
+- Cond type is much more performant than utilizing channels.
+
+* Cond, Broadcast
+
+.code -edit src/01-Intro/cond02/main.go  /START OMIT1/,/END OMIT1/
+
+* Cond, Broadcast
+
+- subscribe is convenience function that will allow us to register functions to handle signals from a condition.
+
+- Each handler is run on its own goroutine, and subscribe will not exit until that goroutine is confirmed to be running.
+
+* Cond, Broadcast
+
+.play -edit src/01-Intro/cond02/main.go  /START OMIT2/,/END OMIT2/
+
+* Cond, Broadcast
+
+- we set a handler for when the mouse button is clicked.
+
+- Broadcast on the Clicked Cond to let all handlers know that the mouse button has been clicked 
+
+- usage of Cond works best when constrained to a tight scope, or exposed to a broader scope through a type that encapsulates it.
+
+* Once
+
+.play -edit src/01-Intro/once/main.go  /START OMIT2/,/END OMIT2/
+
+- sync.Once ensure that only one call to Do ever calls the function passed in—even on different goroutines. 
+
+* Pool
+
+- pool pattern is a way to create and make available a fixed number, or pool, of things for use. 
+
+-  commonly used to constrain the creation of things that are expensive (e.g., database connections) so that only a fixed number of them are ever created,
+
+* Pool..
+
+- Get will first check whether there are any available instances within the pool to return to the caller, and if not, call its New member variable to create a new one.
+
+- When finished, callers call Put to place the instance they were working with back in the pool for use by other processes. 
+
+* Pool..
+
+.play -edit src/01-Intro/pool/main.go  /START OMIT2/,/END OMIT2/
+
+* Pool..
+
+- Pool is useful where preallocated memory could avoid attempting to allocate a gigabyte of memory,
+
+- warming a cache of pre-allocated objects for operations that must run as quickly as possible.
+
+* Channels
+
+- used to communicate information between goroutines.
+
+- 
