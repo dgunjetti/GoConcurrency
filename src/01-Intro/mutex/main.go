@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	//START OMIT1
+	// START OMIT1
 	var count int
 	var lock sync.Mutex
 	var wg sync.WaitGroup
@@ -17,8 +17,8 @@ func main() {
 		defer lock.Unlock()
 		count++
 	}()
-	//END OMIT1
-	//START OMIT2
+	// END OMIT1
+	// START OMIT2
 	wg.Add(1)
 	go func() {
 		lock.Lock()
@@ -27,5 +27,5 @@ func main() {
 	}()
 	wg.Wait()
 	fmt.Println("complete..")
-	//END OMIT2
+	// END OMIT2
 }

@@ -1,0 +1,191 @@
+Concurrency Patterns in Go
+
+
+Deepak Gunjetti
+Software Architect @ Andcloud
+deepak@andcloud.io
+@dgunjetti
+
+* Concurrent safe operation
+
+- Synchronization primitives for sharing memory (sync.Mutex).
+
+- Synchronication via communicating (channels)
+
+- Immutable data
+
+- Data protection by confinement
+
+* Immutable data 
+
+- Each concurrent process may operate on the same data, but it may not modify it. 
+
+- code utilizes copies of values instead of pointers to values in memory.
+
+* confinement
+
+- Information is only  available from one concurrent process. 
+
+- concurrent program is implicitly safe and no synchronization is needed. 
+
+* Lexical confinement 
+
+- only exposing read or write aspects of a channel to the concurrent processes that need them. 
+
+- we don’t need to synchronize memory access or share data through communication.
+
+* Lexical confinement 
+
+.code -edit src/02-ConcurrencyPatterns/confinement01/main.go  /START OMIT1/,/END OMIT1/
+
+* Lexical confinement... 
+
+.play -edit src/02-ConcurrencyPatterns/confinement01/main.go  /START OMIT2/,/END OMIT2/
+
+* Lexical confinement... 
+
+- we instantiate the channel within the lexical scope of the chanOwner function. This limits the scope of the write aspect of the results channel to the closure function defined below.
+
+-  we receive the read aspect of the channel and we’re able to pass it into the consumer, which can do nothing but read from it. This confines the main goroutine to a read-only view of the channel.
+
+* Lexical confinement... 
+
+.play -edit src/02-ConcurrencyPatterns/confinement02/main.go  /START OMIT/,/END OMIT/
+
+
+* Preventing Goroutine Leaks
+
+- goroutines are not garbage collected by the runtime, we need to ensure they are cleaned up.
+
+
+* Goroutines termination
+
+- When it has completed its work.
+
+- When it cannot continue its work due to an unrecoverable error.
+
+- When it’s told to stop working.
+
+* Cancellation of children goroutines 
+
+- parent goroutine passes read-only channel to the child goroutine and then closes the channel when it wants to cancel the child goroutine.
+
+* Cancellation..
+
+.play -edit src/02-ConcurrencyPatterns/cancel/main.go  /START OMIT1/,/END OMIT1/
+
+* Cancellation..
+
+.play -edit src/02-ConcurrencyPatterns/cancel/main.go  /START OMIT2/,/END OMIT2/
+
+* Cancellation..
+
+- we pass the done channel to the doWork function. As a convention, this channel is the first parameter.
+
+- for-select one of case statements is checking whether our done channel has been signaled. If it has, we return from the goroutine.
+
+- we create a third goroutine to cancel the goroutine within doWork after a second. We have successfully eliminated our goroutine leak.
+
+* Cancelling producer goroutine 
+
+.play -edit src/02-ConcurrencyPatterns/cancel02/main.go  /START1 OMIT/,/END1 OMIT/
+
+* Cancelling producer goroutine..
+
+.play -edit src/02-ConcurrencyPatterns/cancel02/main.go  /START2 OMIT/,/END2 OMIT/
+
+* Cancelling producer goroutine..
+
+- If a goroutine is responsible for creating a goroutine, it is also responsible for ensuring it can stop the goroutine.
+
+* Error Handling
+
+- concurrent processes should send their errors to another part of your program that has complete information about the state of your program, and can make a more informed decision about what to do. 
+
+* Error Handling..
+
+.play -edit src/02-ConcurrencyPatterns/errorHandling/main.go  /START1 OMIT/,/END1 OMIT/
+
+* Error Handling..
+
+.play -edit src/02-ConcurrencyPatterns/errorHandling/main.go  /START2 OMIT/,/END2 OMIT/
+
+* Error Handling..
+
+- we create a type that encompasses both the *http.Response and the error possible from an iteration of the loop within our goroutine.
+
+- checkStatus() returns a channel that can be read from to retrieve results of an iteration of our loop.
+
+- we’ve successfully separated the concerns of error handling from our producer goroutine. 
+
+- main() has more context about the running program, and can make more intelligent decisions about what to do with errors.
+
+* Pipelines
+
+- A pipeline is a tool used to form an abstraction when your program needs to process streams, or batches of data. 
+
+- stage of the pipeline - take data in, perform an operation on it, and pass the data back out.
+
+- using a pipeline, you separate the concerns of each stage.
+
+- ability to process individual stages concurrently
+
+- A stage consumes and returns the same type.
+
+* Pipelines
+
+- create a done channel and call close on it in a defer statement, this ensures our program exits cleanly and never leaks goroutines. 
+
+* Pipelines
+
+.play -edit src/02-ConcurrencyPatterns/pipeline01/main.go  /START1 OMIT/,/END1 OMIT/
+
+* Pipelines
+
+.play -edit src/02-ConcurrencyPatterns/pipeline01/main.go  /START2 OMIT/,/END2 OMIT/
+
+* Pipelines
+
+.play -edit src/02-ConcurrencyPatterns/pipeline01/main.go  /START3 OMIT/,/END3 OMIT/
+
+* Pipelines
+
+.play -edit src/02-ConcurrencyPatterns/pipeline01/main.go  /START4 OMIT/,/END4 OMIT/
+
+* Pipelines..
+
+-  Generator batch of data convert to a channel.
+
+- each stage of the pipeline is executing concurrently.
+
+- any stage only need wait for its inputs, and to be able to send its outputs.
+
+- The stages are interconnected in two ways: by the common done channel, and by the channels that are passed into subsequent stages of the pipeline.
+
+* Pipelines..
+
+- Ranging over the incoming channel. When the incoming channel is closed, the range will exit.
+
+- The send sharing a select statement with the done channel.
+
+- select statement and done channel, which ensures that generator is preemptable even if it is blocked attempting to write to intStream.
+
+* Fan-Out, Fan-In
+
+- Sometimes, stages in your pipeline can be particularly computationally expensive. When this happens, upstream stages in your pipeline can become blocked while waiting for your expensive stages to complete.
+
+- Fan-out is a term to describe the process of starting multiple goroutines to handle input from the pipeline
+
+- Fan-in is a term to describe the process of combining multiple results into one channel.
+
+
+* Fan-Out, Fan-In...
+
+- Current computation doesn’t rely on values that the stage had calculated before.
+
+- Computation takes a long time to run.
+
+- Fan-in multiplex or join together multiple streams of data into a single stream. 
+
+- 
+

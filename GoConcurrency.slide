@@ -1,5 +1,5 @@
-Introduction to Go
-Welcome to Gophers world
+Introduction to Concurrency in Go
+Language primitives to concurrency..
 
 
 Deepak Gunjetti
@@ -17,7 +17,7 @@ deepak@andcloud.io
 
 - Goroutines is a function that is running concurrently (not necessarily in parallel!).
 
-- 'go' keyword placed befor a function call starts a goroutine.
+- 'go' keyword placed before a function call starts a goroutine.
 
 .code -edit src/01-Intro/hello01/main.go  /START OMIT/,/END OMIT/
 
@@ -213,7 +213,7 @@ of an event.
 
 * Once
 
-.play -edit src/01-Intro/once/main.go  /START OMIT2/,/END OMIT2/
+.play -edit src/01-Intro/once/main.go  /START OMIT/,/END OMIT/
 
 - sync.Once ensure that only one call to Do ever calls the function passed in—even on different goroutines. 
 
@@ -231,7 +231,7 @@ of an event.
 
 * Pool..
 
-.play -edit src/01-Intro/pool/main.go  /START OMIT2/,/END OMIT2/
+.play -edit src/01-Intro/pool/main.go  /START OMIT/,/END OMIT/
 
 * Pool..
 
