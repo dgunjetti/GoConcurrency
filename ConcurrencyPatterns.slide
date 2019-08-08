@@ -36,17 +36,9 @@ deepak@andcloud.io
 
 * Lexical confinement 
 
-.code -edit src/02-ConcurrencyPatterns/confinement01/main.go  /START OMIT1/,/END OMIT1/
+.code -edit src/02-ConcurrencyPatterns/confinement01/main.go  /START1 OMIT/,/END1 OMIT/
 
-* Lexical confinement... 
-
-.play -edit src/02-ConcurrencyPatterns/confinement01/main.go  /START OMIT2/,/END OMIT2/
-
-* Lexical confinement... 
-
-- we instantiate the channel within the lexical scope of the chanOwner function. This limits the scope of the write aspect of the results channel to the closure function defined below.
-
--  we receive the read aspect of the channel and we’re able to pass it into the consumer, which can do nothing but read from it. This confines the main goroutine to a read-only view of the channel.
+.play -edit src/02-ConcurrencyPatterns/confinement01/main.go  /START2 OMIT/,/END2 OMIT/
 
 * Lexical confinement... 
 
@@ -72,11 +64,11 @@ deepak@andcloud.io
 
 * Cancellation..
 
-.play -edit src/02-ConcurrencyPatterns/cancel/main.go  /START OMIT1/,/END OMIT1/
+.play -edit src/02-ConcurrencyPatterns/cancel/main.go  /START1 OMIT/,/END1 OMIT/
 
 * Cancellation..
 
-.play -edit src/02-ConcurrencyPatterns/cancel/main.go  /START OMIT2/,/END OMIT2/
+.play -edit src/02-ConcurrencyPatterns/cancel/main.go  /START2 OMIT/,/END2 OMIT/
 
 * Cancellation..
 
@@ -84,7 +76,9 @@ deepak@andcloud.io
 
 - for-select one of case statements is checking whether our done channel has been signaled. If it has, we return from the goroutine.
 
-- we create a third goroutine to cancel the goroutine within doWork after a second. We have successfully eliminated our goroutine leak.
+- we create a third goroutine to cancel the goroutine within doWork after a second. 
+
+- We have successfully eliminated our goroutine leak.
 
 * Cancelling producer goroutine 
 
@@ -97,6 +91,40 @@ deepak@andcloud.io
 * Cancelling producer goroutine..
 
 - If a goroutine is responsible for creating a goroutine, it is also responsible for ensuring it can stop the goroutine.
+
+* The or-channel
+
+- At times you may find yourself wanting to combine one or more done channels into a single done channel that closes if any of its component channels close.
+
+- you can combine these channels together using the or-channel pattern.
+
+* The or-channel...
+
+.code -edit src/02-ConcurrencyPatterns/orChannel/main.go  /START1 OMIT/,/END1 OMIT/
+
+* The or-channel...
+
+.code -edit src/02-ConcurrencyPatterns/orChannel/main.go  /START2 OMIT/,/END2 OMIT/
+
+* The or-channel...
+
+- or function enables to combine any number of channels together into a single channel that will close as soon as any of its component channels are closed, or written to. 
+
+- main body of the function, and where the recursion happens. We create a goroutine so that we can wait for messages on our channels without blocking.
+
+- every recursive call to or will at least have two channels.
+
+* The or-channel...
+
+.code -edit src/02-ConcurrencyPatterns/orChannel/main.go  /START3 OMIT/,/END3 OMIT/
+
+* The or-channel...
+
+- This function simply creates a channel that will close when the time specified in the after elapses.
+
+- Notice that despite placing several channels in our call to or that take various times to close, our channel that closes after one second causes the entire channel created by the call to or to close.
+
+- This pattern is useful to employ at the intersection of modules in your system. At these intersections, you tend to have multiple conditions for canceling trees of goroutines through your call stack. 
 
 * Error Handling
 
@@ -120,6 +148,9 @@ deepak@andcloud.io
 
 - main() has more context about the running program, and can make more intelligent decisions about what to do with errors.
 
+- errors should be considered first-class citizens when constructing values to return from goroutines. If your goroutine can produce errors, those errors should be tightly coupled with your result type, and passed along through the same lines of communication—just like regular synchronous functions.
+
+
 * Pipelines
 
 - A pipeline is a tool used to form an abstraction when your program needs to process streams, or batches of data. 
@@ -128,13 +159,17 @@ deepak@andcloud.io
 
 - using a pipeline, you separate the concerns of each stage.
 
-- ability to process individual stages concurrently
+- ability to process individual stages concurrently.
+
+- you can mix and match how stages are combined independent of modifying the stages.
+
+- you can process each stage concurrent to upstream or downstream stages, and you can fan-out, or rate-limit portions of your pipeline. 
+
+* properties of a pipeline stage
 
 - A stage consumes and returns the same type.
 
-* Pipelines
-
-- create a done channel and call close on it in a defer statement, this ensures our program exits cleanly and never leaks goroutines. 
+- Channels are uniquely suited to constructing pipelines in Go. They can receive and emit values, they can safely be used concurrently, they can be ranged over.
 
 * Pipelines
 
@@ -178,14 +213,237 @@ deepak@andcloud.io
 
 - Fan-in is a term to describe the process of combining multiple results into one channel.
 
-
-* Fan-Out, Fan-In...
+* consider fanning out when
 
 - Current computation doesn’t rely on values that the stage had calculated before.
 
 - Computation takes a long time to run.
 
+* consider fan in when
+
 - Fan-in multiplex or join together multiple streams of data into a single stream. 
 
-- 
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START1 OMIT/,/END1 OMIT/
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START2 OMIT/,/END2 OMIT/
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START3 OMIT/,/END3 OMIT/
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START4 OMIT/,/END4 OMIT/
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START5 OMIT/,/END5 OMIT/
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START6 OMIT/,/END6 OMIT/
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START7 OMIT/,/END7 OMIT/
+
+* Fan-Out, Fan-In
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START8 OMIT/,/END8 OMIT/
+
+* Fan-Out, Fan-In
+
+- We now have eight goroutines pulling from the random number generator and attempting to determine whether the number is prime. 
+
+- fanning multiplexing or joining together multiple streams of data into a single stream.
+
+- fanning in involves creating the multiplexed channel consumers will read from, and then spinning up one goroutine for each incoming channel, and one goroutine to close the multiplexed channel when the incoming channels have all been closed. 
+
+* The bridge-channel
+
+- every time a pipeline stage is restarted within a new goroutine, a new channel would be created. This means we’d effectively have a sequence of channels.
+
+- bridge-channel is useful to consume values from a sequence of channels.
+
+- bridging the channels destructure the channel of channels into a simple channel
+
+* Bridge-channel
+
+.code -edit src/02-ConcurrencyPatterns/fanout/main.go  /START1 OMIT/,/END1 OMIT/
+
+* Bridge-channel
+
+.code -edit src/02-ConcurrencyPatterns/bridge/main.go  /START2 OMIT/,/END2 OMIT/
+
+* Bridge-channel
+
+.code -edit src/02-ConcurrencyPatterns/bridge/main.go  /START3 OMIT/,/END3 OMIT/
+
+* Bridge-channel
+
+.code -edit src/02-ConcurrencyPatterns/bridge/main.go  /START4 OMIT/,/END4 OMIT/
+
+- we can use the channel of channels from within a single range statement 
+
+* Queuing
+
+- Begin accepting work for your pipeline even though the pipeline is not yet ready for more.
+
+- While introducing queuing into your system is very useful, it’s usually one of the last techniques you want to employ when optimizing your program. Adding queuing prematurely can hide synchronization issues such as deadlocks and livelocks
+
+- Queuing will almost never speed up the total runtime of your program; it will only allow the program to behave differently.
+
+* Queuing...
+
+- Consider pipeline with stages, acceptConnection stage, processRequest stage
+
+- you wouldn’t want connections to your program to begin timing out because your processRequest stage was blocking your acceptConnection stage.
+
+-  introducing a queue isn’t that the runtime of one of stages has been reduced, but rather that the time it’s in a blocking state is reduced. 
+
+- users would likely experience lag in their requests, but they wouldn’t be denied service altogether.
+
+- true utility of queues is to decouple stages so that the runtime of one stage has no impact on the runtime of another. 
+
+* Queuing...
+
+- situations in which queuing can increase the overall performance of your system. The only applicable situations are:
+
+- If batching requests in a stage saves time.
+
+- If delays in a stage produce a feedback loop into the system.
+
+* Queuing...
+
+- queuing should be implemented either:
+
+- At the entrance to your pipeline.
+
+- In stages where batching will lead to higher efficiency.
+
+* how large our queues should be.
+
+- Little’s Law - L=λW
+
+- L = the average number of units in the system.
+
+- λ = the average arrival rate of units.
+
+- W = the average time a unit spends in the system.
+
+- if 1 request (r) takes about 1 second, there are 3 stages 
+    3r = λr/s * 1s
+    3r/s = λr/s
+    λr/s = 3r/s
+
+- we can handle three requests per second. so queue size needs to 3.
+
+* The context Package
+
+- context package serves two primary purposes:
+
+- provide an API for canceling branches of your call-graph.
+
+- provide a data-bag for transporting request-scoped data through your call-graph.
+
+* Context Package..
+
+    type Context interface {
+        Deadline() (deadline time.Time, ok bool)
+        Done() <-chan struct{}
+        Err() error
+        Value(key interface{}) interface{}
+    }
+
+* Context Package..
+
+- Deadline function to indicate if a goroutine will be canceled after a certain time
+
+- Err method that will return non-nil if the goroutine was canceled. 
+
+- Value method used to hold request-specific information.
+
+* Context Package.. cancellation..
+
+- A goroutine may want to cancel its children.
+
+- Any blocking operations within a goroutine need to be preemptable so that it may be canceled.
+
+* Context Package..
+
+- Context is immutable
+
+- to affect the behavior of cancellations in functions below a current function in the call stack, we have functions
+
+    func WithCancel(parent Context) 
+                    (ctx Context, cancel CancelFunc)
+    func WithDeadline(parent Context, deadline time.Time) 
+                    (Context, CancelFunc)
+    func WithTimeout(parent Context, timeout time.Duration) 
+                    (Context, CancelFunc)
+
+* Context Package..
+
+- The functions all generate new instances of a Context with the options relative to these functions.
+
+- WithCancel returns a new Context that closes its done channel when the returned cancel function is called.
+
+- WithDeadline returns a new Context that closes its done channel when the machine’s clock advances past the given deadline
+
+- WithTimeout returns a new Context that closes its done channel after the given timeout duration.
+
+* Context Package..
+
+- If your function needs to cancel functions below it in the call-graph in some manner, it will call one of these functions and pass in the Context it was given, and then pass the Context returned into its children.
+
+- successive layers of the call-graph can create a Context that adheres to their needs without affecting their parents.
+
+* Context Package..
+
+- instances of a Context are meant to flow through your program’s call-graph. 
+
+- Instances of context.Context may look equivalent from the outside, but internally they may change at every stack-frame. For this reason, it’s important to always pass instances of Context into your functions.
+
+* Context Package..
+
+    func Background() Context
+    func TODO() Context
+
+- Background simply returns an empty Context. 
+
+- TODO is not meant for use in production, but also returns an empty Context.
+
+- TODO’s intended purpose is to serve as a placeholder for when you don’t know which Context to utilize, or if you expect your code to be provided with a Context, but the upstream code hasn’t yet furnished one.
+
+* Context Package..
+
+src/context/main.go
+
+- main creates a new Context with context.Background() and wraps it with context.WithCancel to allow for cancellations.
+
+- genGreeting wraps its Context with context.WithTimeout. This will automatically cancel the returned Context after 1 second, thereby canceling any children it passes the Context into, namely locale.
+
+- locale() returns the reason why the Context was canceled. This error will bubble all the way up to main
+
+* Context Package..
+
+- genGreeting was able to build up a custom context.Context to meet its needs without having to affect its parent’s Context.
+
+- If genGreeting were to return successfully, and printGreeting needed to make another call, it could do so without leaking information about how genGreeting operated. 
+
+- This composability enables you to write large systems without mixing concerns throughout your call-graph.
+
+* Context Package.. data-bag..
+
+- when a function creates a goroutine and Context, it’s starting a process that will service requests, and functions further down the stack may need information about the request.
+
+* Context Package.. data-bag..
+
+.play -edit src/02-ConcurrencyPatterns/context02/main.go  /START OMIT/,/END OMIT/
+
 

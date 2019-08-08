@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 func main() {
-	// START OMIT1
+	// START1 OMIT
 	chanOwner := func() <-chan int {
 		results := make(chan int, 5)
 		go func() {
@@ -14,8 +14,8 @@ func main() {
 		}()
 		return results
 	}
-	// END OMIT1
-	// START OMIT2
+	// END1 OMIT
+	// START2 OMIT
 	consumer := func(results <-chan int) {
 		for result := range results {
 			fmt.Printf("recived: %d\n", result)
@@ -25,5 +25,5 @@ func main() {
 
 	results := chanOwner()
 	consumer(results)
-	// END OMIT2
+	// END2 OMIT
 }

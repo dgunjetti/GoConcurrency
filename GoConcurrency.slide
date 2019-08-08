@@ -9,7 +9,7 @@ deepak@andcloud.io
 
 * Goroutines
 
-- Goroutines is the basic unit of organisation in a Go program.
+- Goroutines represent units of work that may or may not run in parallel with each other. 
 
 - Every program has at least one goroutine: the main goroutine, which is automatically created and started when process begins.
 

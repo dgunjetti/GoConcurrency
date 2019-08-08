@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	// START OMIT1
+	// START1 OMIT
 	doWork := func(
 		done <-chan interface{},
 		strings <-chan string,
@@ -26,9 +26,9 @@ func main() {
 		}()
 		return terminated
 	}
-	// END OMIT1
+	// END1 OMIT
 
-	// START OMIT2
+	// START2 OMIT
 	done := make(chan interface{})
 	terminated := doWork(done, nil)
 
@@ -40,5 +40,5 @@ func main() {
 	}()
 	<-terminated
 	fmt.Println("done...")
-	// END OMIT2
+	// END2 OMIT
 }
