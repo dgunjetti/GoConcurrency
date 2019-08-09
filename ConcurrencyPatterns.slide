@@ -446,4 +446,198 @@ src/context/main.go
 
 .play -edit src/02-ConcurrencyPatterns/context02/main.go  /START OMIT/,/END OMIT/
 
+* Error propogation
+
+- how issues propagate through your system, and how they end up being represented to the user is important.
+
+- Error should depict, what happened, when and where it occured, complete stack strace.
+
+- Errors should contains time on the machine in UTC
+
+- User friendly message. 
+
+- Hash of stack trace as log ID to reference in corresponding log that contains full information.
+
+* Errors...
+
+- It’s possible to place all errors into one of two categories:
+
+    Bugs
+
+    Known edge cases (e.g., broken network connections, failed disk writes, etc.)
+
+-  At boundaries of each component, all incoming errors must be wrapped in a well-formed error 
+
+- module boundaries we convert the error to our module’s error type—potentially filling in pertinent information. 
+
+- if incoming error is not well formed, simply ferry the malformed error up the stack to indicate a bug.
+
+* Errors...
+
+- src/02-ConcurrencyPatterns/errors01/main.go
+
+* Errors...
+
+- we store lowest-level error, stack trace, log id.
+
+- "lowlevel" module wrap the raw error from calling os.Stat with a customized error.
+
+- err.(IntermediateErr) - check to see if the error is of the expected type. If it is, we know it’s a well-crafted error, and we can simply pass its message on to the user.
+
+- handleError(1, err, msg) - bind the log and error message together with an ID of 1
+
+* Heartbeats
+
+- Heartbeats are a way for concurrent processes to signal life to outside parties. 
+
+- Two types: 
+
+- Heartbeats that occur on a time interval.
+
+- Heartbeats that occur at the beginning of a unit of work.
+
+* Heartbeats.. interval
+
+- src/02-ConcurrencyPatterns/heartbeat01/main.go
+
+* Heartbeats.. interval
+
+- <1> set up a channel to send heartbeats on
+
+- <2> heartbeat to pulse at the pulseInterval
+
+- <4> default clause, We must always guard against the fact that no one may be listening to our heartbeat. 
+
+- Notice that because we might be sending out multiple pulses while we wait for input, or multiple pulses while waiting to send results, all the select statements need to be within for loops.
+
+* Heartbeats.. interval
+
+- <4> select on the heartbeat. 
+
+- When there are no results, we are at least guaranteed a message from the heartbeat channel every timeout/2. If we don’t receive it, we know there’s something wrong with the goroutine itself.
+
+- By using a heartbeat, we can avoid deadlock, and we remain deterministic by not having to rely on a longer timeout. 
+
+- Heartbeats let us know that long-running goroutines remain up, but are just taking a while to produce a value to send on the values channel.
+
+* Heartbeats.. beginning of a unit of work..
+
+- src/02-ConcurrencyPatterns/heartbeat02/main.go
+
+* Heartbeats.. beginning of a unit of work..
+
+- create the heartbeat channel with a buffer of one. This ensures that there’s always at least one pulse sent out even if no one is listening in time for the send to occur.
+
+- we set up a separate select block for the heartbeat. We don’t want to include this in the same select block as the send on results because if the receiver isn’t ready for the result, they’ll receive a pulse instead, and the current value of the result will be lost. We also don’t include a case statement for the done channel since we have a default case that will just fall through.
+
+- we receive one pulse for every result.
+
+- if you only care that the goroutine has started doing its work, this style of heartbeat is simple. 
+
+* Heartbeats... interval.. concurrent test
+
+- src/02-ConcurrencyPatterns/heartbeat03/main.go
+
+* Heartbeats... interval.. concurrent test
+
+- <1> require two loops: one to range over our list of numbers, and this inner loop to run until the number is successfully sent on the intStream.
+
+- <4> wait for the first heartbeat to occur to indicate we’ve entered the goroutine’s loop.
+
+* Rate Limiting
+
+- constrains the number of times some kind of resource is accessed to some finite number per unit of time. 
+
+- The resource can be anything: API connections, disk reads/writes, network packets, errors
+
+- By rate limiting a system, you prevent entire classes of attack vectors against your system. 
+
+- fill up your service’s disk either with log messages or valid requests. if you don’t rate limit requests to your system, you cannot easily secure it.
+
+* Rate Limiting..
+
+- Most rate limiting is done by utilizing an algorithm called the token bucket. 
+
+- every time you need to access a resource, you reach into the bucket and remove a token. 
+
+- if no access token is available, you either have to queue your request until a token becomes available, or deny the request.
+
+- In the token bucket algorithm, we define r to be the rate at which tokens are added back to the bucket. 
+
+- we have to wait until new tokens become available, we limit our operations to that refresh rate.
+
+* Rate Limiting..
+
+- Burstiness  means how many requests can be made when the bucket is full.
+
+- Normally a rate limiter would be running on a server so the users couldn’t trivially bypass it. Production systems might also include a client-side rate limiter to help prevent the client from making unnecessary calls only to be denied.
+
+
+* Rate Limiting..example..
+
+- Two API one for reading a file, and one for resolving a domain name to an IP address. 
+
+- The driver needs to read 10 files and resolve 10 addresses, they are done concurrently.
+
+- examples uses an implementation of a token bucket rate limiter from the golang.org/x/time/rate package.
+
+- NewLimiter, takes two parameters: r and b. r is the rate of replishment, and b is the bucket depth.
+
+- rate.Limit(events/timePeriod.Seconds()) - number of operations per time measurement
+
+- we create a rate.Limiter, we use it to block our requests until we’re given an access token. We can do that with the Wait method.
+
+* Rate Limiting..example..
+
+- src/02-ConcurrencyPatterns/rate-limit/main.go
+
+- <1> we set the rate limit for all API connections to one event per second.
+
+- <2> we wait on the rate limiter to have enough access tokens for us to complete our request.
+
+- we are completing a request once a second, even though we were fielding all of our API requests simultaneously.
+
+* Healing Unhealthy Goroutines
+
+- In long-lived processes such as daemons, it’s very common to have a set of long-lived goroutines.
+
+- it can be very easy for a goroutine to become stuck in a bad state from which it cannot recover without external help.
+
+- it can be useful to create a mechanism that ensures your goroutines remain healthy and restarts them if they become unhealthy.
+
+* Healing Unhealthy Goroutines...
+
+- To heal goroutines, we’ll use our heartbeat pattern to check up on the liveliness of the goroutine we’re monitoring. 
+
+* Healing Unhealthy Goroutines...
+
+- src/02-ConcurrencyPatterns/rate-limit/main.go
+
+- <1> - signature of a goroutine that can be monitored and restarted. 
+
+- <2> - we see that a steward takes in a timeout for the goroutine it will be monitoring and a function, startGoroutine, to start the goroutine it’s monitoring.
+
+- <3> - closure that encodes a consistent way to start the goroutine we’re monitoring.
+
+- <4> - we create a new channel that we’ll pass into the ward goroutine in case we need to signal that it should halt.
+
+* Healing Unhealthy Goroutines...
+
+- <5> - We want the ward goroutine to halt if either the steward is halted, or the steward wants to halt the ward goroutine, so we wrap both done channels in a logical-or. 
+
+- <7> - we see that if we receive the ward’s pulse, we continue our monitoring loop.
+
+- <8> - if we don’t receive a pulse from the ward within our timeout period, we request that the ward halt and we begin a new ward goroutine. 
+
+* Healing Unhealthy Goroutines...
+
+- <1> goroutine isn’t doing anything but waiting to be canceled. 
+
+- <2> create a steward for the goroutine doWork starts. We set the timeout for doWork at four seconds.
+
+- <3> we halt the steward and its ward after nine seconds so that our example will end.
+
+- <4> we start the steward and range over its pulses to prevent our example from halting.
+
+
 
